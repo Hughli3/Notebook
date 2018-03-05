@@ -95,7 +95,69 @@ z = tf.placeholder(tf.float32)
 
 with tf.Session() as sess:
     output = sess.run(x, feed_dict={x: 'Test String', y: 123, z: 45.67})
+    print(output)
 ```
 注意：
 
 如果传入 feed_dict 的数据与 tensor 类型不符，就无法被正确处理，你会得到 “ValueError: invalid literal for...”。
+
+### 练习
+让我们看看你对 tf.placeholder() 和 feed_dict 的理解如何。下面的代码有一个报错，但是我想让你修复代码并使其返回数字 123。修改第 11 行，使代码返回数字 123。
+```py
+import tensorflow as tf
+
+
+def run():
+    output = None
+    x = tf.placeholder(tf.int32)
+
+    with tf.Session() as sess:
+        # TODO: Feed the x tensor 123
+        output = sess.run(x)
+
+    return output
+```
+
+```py
+import tensorflow as tf
+
+
+def run():
+    output = None
+    x = tf.placeholder(tf.int32)
+
+    with tf.Session() as sess:
+        # TODO: Feed the x tensor 123
+        output = sess.run(x,feed_dict = {x:123 })
+
+    return output
+```
+
+## TensorFlow 数学
+获取输入很棒，但是现在你需要使用它。你将使用每个人都懂的基础数学运算，加、减、乘、除，来处理 tensor。（更多数学函数请查看文档）。
+
+### 加法
+```py
+x = tf.add(5, 2)  # 7
+```
+从加法开始，tf.add() 函数如你所想，它传入两个数字、两个 tensor、或数字和 tensor 各一个，以 tensor 的形式返回它们的和。
+
+### 减法和乘法
+这是减法和乘法的例子：
+```py
+x = tf.subtract(10, 4) # 6
+y = tf.multiply(2, 5)  # 10
+```
+x tensor 求值结果是 6，因为 10 - 4 = 6。y tensor 求值结果是 10，因为 2 * 5 = 10。是不是很简单！
+
+### 类型转换
+为了让特定运算能运行，有时会对类型进行转换。例如，你尝试下列代码，会报错：
+```py
+tf.subtract(tf.constant(2.0),tf.constant(1))  # Fails with ValueError: Tensor conversion requested dtype float32 for Tensor with dtype int32:
+```
+这是因为常量 1 是整数，但是常量 2.0 是浮点数，subtract 需要它们的类型匹配。
+
+在这种情况下，你可以确保数据都是同一类型，或者强制转换一个值为另一个类型。这里，我们可以把 2.0 转换成整数再相减，这样就能得出正确的结果：
+```py
+tf.subtract(tf.cast(tf.constant(2.0), tf.int32), tf.constant(1))   # 1
+```
