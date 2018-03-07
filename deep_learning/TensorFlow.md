@@ -544,3 +544,384 @@ example_batches 变量如下：
     ]
 ]
 ```
+
+## Epochs（代）
+一个 epoch（代）是指整个数据集正向反向训练一次。它被用来提示模型的准确率并且不需要额外数据。本节我们将讲解 TensorFlow 里的 epochs，以及如何选择正确的 epochs。
+
+下面是训练一个模型 10 代的 TensorFlow 代码
+```py
+from tensorflow.examples.tutorials.mnist import input_data
+import tensorflow as tf
+import numpy as np
+from helper import batches  # Helper function created in Mini-batching section
+
+
+def print_epoch_stats(epoch_i, sess, last_features, last_labels):
+    """
+    Print cost and validation accuracy of an epoch
+    """
+    current_cost = sess.run(
+        cost,
+        feed_dict={features: last_features, labels: last_labels})
+    valid_accuracy = sess.run(
+        accuracy,
+        feed_dict={features: valid_features, labels: valid_labels})
+    print('Epoch: {:<4} - Cost: {:<8.3} Valid Accuracy: {:<5.3}'.format(
+        epoch_i,
+        current_cost,
+        valid_accuracy))
+
+n_input = 784  # MNIST data input (img shape: 28*28)
+n_classes = 10  # MNIST total classes (0-9 digits)
+
+# Import MNIST data
+mnist = input_data.read_data_sets('/datasets/ud730/mnist', one_hot=True)
+
+# The features are already scaled and the data is shuffled
+train_features = mnist.train.images
+valid_features = mnist.validation.images
+test_features = mnist.test.images
+
+train_labels = mnist.train.labels.astype(np.float32)
+valid_labels = mnist.validation.labels.astype(np.float32)
+test_labels = mnist.test.labels.astype(np.float32)
+
+# Features and Labels
+features = tf.placeholder(tf.float32, [None, n_input])
+labels = tf.placeholder(tf.float32, [None, n_classes])
+
+# Weights & bias
+weights = tf.Variable(tf.random_normal([n_input, n_classes]))
+bias = tf.Variable(tf.random_normal([n_classes]))
+
+# Logits - xW + b
+logits = tf.add(tf.matmul(features, weights), bias)
+
+# Define loss and optimizer
+learning_rate = tf.placeholder(tf.float32)
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cost)
+
+# Calculate accuracy
+correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
+init = tf.global_variables_initializer()
+
+batch_size = 128
+epochs = 10
+learn_rate = 0.001
+
+train_batches = batches(batch_size, train_features, train_labels)
+
+with tf.Session() as sess:
+    sess.run(init)
+
+    # Training cycle
+    for epoch_i in range(epochs):
+
+        # Loop over all batches
+        for batch_features, batch_labels in train_batches:
+            train_feed_dict = {
+                features: batch_features,
+                labels: batch_labels,
+                learning_rate: learn_rate}
+            sess.run(optimizer, feed_dict=train_feed_dict)
+
+        # Print cost and validation accuracy of an epoch
+        print_epoch_stats(epoch_i, sess, batch_features, batch_labels)
+
+    # Calculate accuracy for test dataset
+    test_accuracy = sess.run(
+        accuracy,
+        feed_dict={features: test_features, labels: test_labels})
+
+print('Test Accuracy: {}'.format(test_accuracy))
+Running the code will output the following:
+
+Epoch: 0    - Cost: 11.0     Valid Accuracy: 0.204
+Epoch: 1    - Cost: 9.95     Valid Accuracy: 0.229
+Epoch: 2    - Cost: 9.18     Valid Accuracy: 0.246
+Epoch: 3    - Cost: 8.59     Valid Accuracy: 0.264
+Epoch: 4    - Cost: 8.13     Valid Accuracy: 0.283
+Epoch: 5    - Cost: 7.77     Valid Accuracy: 0.301
+Epoch: 6    - Cost: 7.47     Valid Accuracy: 0.316
+Epoch: 7    - Cost: 7.2      Valid Accuracy: 0.328
+Epoch: 8    - Cost: 6.96     Valid Accuracy: 0.342
+Epoch: 9    - Cost: 6.73     Valid Accuracy: 0.36
+Test Accuracy: 0.3801000118255615
+每个 epoch 都试图走向一个低 cost，得到一个更好的准确率。
+
+模型直到 Epoch 9 准确率都一直有提升，让我们把 epochs 的数字提高到 100。
+
+...
+Epoch: 79   - Cost: 0.111    Valid Accuracy: 0.86
+Epoch: 80   - Cost: 0.11     Valid Accuracy: 0.869
+Epoch: 81   - Cost: 0.109    Valid Accuracy: 0.869
+....
+Epoch: 85   - Cost: 0.107    Valid Accuracy: 0.869
+Epoch: 86   - Cost: 0.107    Valid Accuracy: 0.869
+Epoch: 87   - Cost: 0.106    Valid Accuracy: 0.869
+Epoch: 88   - Cost: 0.106    Valid Accuracy: 0.869
+Epoch: 89   - Cost: 0.105    Valid Accuracy: 0.869
+Epoch: 90   - Cost: 0.105    Valid Accuracy: 0.869
+Epoch: 91   - Cost: 0.104    Valid Accuracy: 0.869
+Epoch: 92   - Cost: 0.103    Valid Accuracy: 0.869
+Epoch: 93   - Cost: 0.103    Valid Accuracy: 0.869
+Epoch: 94   - Cost: 0.102    Valid Accuracy: 0.869
+Epoch: 95   - Cost: 0.102    Valid Accuracy: 0.869
+Epoch: 96   - Cost: 0.101    Valid Accuracy: 0.869
+Epoch: 97   - Cost: 0.101    Valid Accuracy: 0.869
+Epoch: 98   - Cost: 0.1      Valid Accuracy: 0.869
+Epoch: 99   - Cost: 0.1      Valid Accuracy: 0.869
+Test Accuracy: 0.8696000006198883
+从上述输出来看，在 epoch 80 的时候，模型的验证准确率就不提升了。让我们看看提升学习率会怎样。
+
+learn_rate = 0.1
+
+Epoch: 76   - Cost: 0.214    Valid Accuracy: 0.752
+Epoch: 77   - Cost: 0.21     Valid Accuracy: 0.756
+Epoch: 78   - Cost: 0.21     Valid Accuracy: 0.756
+...
+Epoch: 85   - Cost: 0.207    Valid Accuracy: 0.756
+Epoch: 86   - Cost: 0.209    Valid Accuracy: 0.756
+Epoch: 87   - Cost: 0.205    Valid Accuracy: 0.756
+Epoch: 88   - Cost: 0.208    Valid Accuracy: 0.756
+Epoch: 89   - Cost: 0.205    Valid Accuracy: 0.756
+Epoch: 90   - Cost: 0.202    Valid Accuracy: 0.756
+Epoch: 91   - Cost: 0.207    Valid Accuracy: 0.756
+Epoch: 92   - Cost: 0.204    Valid Accuracy: 0.756
+Epoch: 93   - Cost: 0.206    Valid Accuracy: 0.756
+Epoch: 94   - Cost: 0.202    Valid Accuracy: 0.756
+Epoch: 95   - Cost: 0.2974   Valid Accuracy: 0.756
+Epoch: 96   - Cost: 0.202    Valid Accuracy: 0.756
+Epoch: 97   - Cost: 0.2996   Valid Accuracy: 0.756
+Epoch: 98   - Cost: 0.203    Valid Accuracy: 0.756
+Epoch: 99   - Cost: 0.2987   Valid Accuracy: 0.756
+Test Accuracy: 0.7556000053882599
+看来学习率提升的太多了，最终准确率更低了。准确率也更早的停止了改进。我们还是用之前的学习率，把 epochs 改成 80
+
+Epoch: 65   - Cost: 0.122    Valid Accuracy: 0.868
+Epoch: 66   - Cost: 0.121    Valid Accuracy: 0.868
+Epoch: 67   - Cost: 0.12     Valid Accuracy: 0.868
+Epoch: 68   - Cost: 0.119    Valid Accuracy: 0.868
+Epoch: 69   - Cost: 0.118    Valid Accuracy: 0.868
+Epoch: 70   - Cost: 0.118    Valid Accuracy: 0.868
+Epoch: 71   - Cost: 0.117    Valid Accuracy: 0.868
+Epoch: 72   - Cost: 0.116    Valid Accuracy: 0.868
+Epoch: 73   - Cost: 0.115    Valid Accuracy: 0.868
+Epoch: 74   - Cost: 0.115    Valid Accuracy: 0.868
+Epoch: 75   - Cost: 0.114    Valid Accuracy: 0.868
+Epoch: 76   - Cost: 0.113    Valid Accuracy: 0.868
+Epoch: 77   - Cost: 0.113    Valid Accuracy: 0.868
+Epoch: 78   - Cost: 0.112    Valid Accuracy: 0.868
+Epoch: 79   - Cost: 0.111    Valid Accuracy: 0.868
+Epoch: 80   - Cost: 0.111    Valid Accuracy: 0.869
+Test Accuracy: 0.86909999418258667
+```
+准确率只到 0.86。这有可能是学习率太高造成的。降低学习率需要更多的 epoch，但是可以最终得到更好的准确率。
+
+在接下来的 TensorFlow Lab 里，你有机会选择你自己的学习率，epoch 数，batch size 来提升模型的准确率。
+
+
+## TensorFlow ReLUs
+TensorFlow 提供了 ReLU 函数 tf.nn.relu()，如下所示：
+
+# Hidden Layer with ReLU activation function
+# 隐藏层用 ReLU 作为激活函数
+```py
+hidden_layer = tf.add(tf.matmul(features, hidden_weights), hidden_biases)
+hidden_layer = tf.nn.relu(hidden_layer)
+
+output = tf.add(tf.matmul(hidden_layer, output_weights), output_biases)
+```
+上面的代码把tf.nn.relu() 放到隐藏层，就像开关一样把负权重关掉了。在激活函数之后，添加像输出层这样额外的层，就把模型变成了非线性函数。这个非线性的特征使得网络可以解决更复杂的问题。
+![avatar](pig/ReLUs.png)
+练习
+下面你将用 ReLU 函数把一个线性单层网络转变成非线性多层网络。
+
+
+```py
+# Solution is available in the other "solution.py" tab
+import tensorflow as tf
+
+output = None
+hidden_layer_weights = [
+    [0.1, 0.2, 0.4],
+    [0.4, 0.6, 0.6],
+    [0.5, 0.9, 0.1],
+    [0.8, 0.2, 0.8]]
+out_weights = [
+    [0.1, 0.6],
+    [0.2, 0.1],
+    [0.7, 0.9]]
+
+# Weights and biases
+weights = [
+    tf.Variable(hidden_layer_weights),
+    tf.Variable(out_weights)]
+biases = [
+    tf.Variable(tf.zeros(3)),
+    tf.Variable(tf.zeros(2))]
+
+# Input
+features = tf.Variable([[1.0, 2.0, 3.0, 4.0], [-1.0, -2.0, -3.0, -4.0], [11.0, 12.0, 13.0, 14.0]])
+
+# TODO: Create Model
+
+# TODO: Print session results
+
+```
+
+Solution
+```py
+# Solution is available in the other "solution.py" tab
+import tensorflow as tf
+
+output = None
+hidden_layer_weights = [
+    [0.1, 0.2, 0.4],
+    [0.4, 0.6, 0.6],
+    [0.5, 0.9, 0.1],
+    [0.8, 0.2, 0.8]]
+out_weights = [
+    [0.1, 0.6],
+    [0.2, 0.1],
+    [0.7, 0.9]]
+
+# Weights and biases
+weights = [
+    tf.Variable(hidden_layer_weights),
+    tf.Variable(out_weights)]
+biases = [
+    tf.Variable(tf.zeros(3)),
+    tf.Variable(tf.zeros(2))]
+
+# Input
+features = tf.Variable([[1.0, 2.0, 3.0, 4.0], [-1.0, -2.0, -3.0, -4.0], [11.0, 12.0, 13.0, 14.0]])
+
+# TODO: Create Model
+hidden_layer = tf.add(tf.matmul(features, weights[0]), biases[0])
+hidden_layer = tf.nn.relu(hidden_layer)
+logits = tf.add(tf.matmul(hidden_layer, weights[1]), biases[1])
+
+
+# TODO: Print session results
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    print(sess.run(logits))
+```
+
+## TensorFlow 中的深度神经网络
+你已经学过了如何用 TensorFlow 构建一个逻辑分类器。现在你会学到如何用逻辑分类器来构建一个深度神经网络。
+
+### 详细指导
+接下来我们看看如何用 TensorFlow 来构建一个分类器来对 MNIST 数字进行分类。如果你要在自己电脑上跑这个代码，文件在这儿。你可以在Aymeric Damien 的 GitHub repository里找到更多的 TensorFlow 的例子。
+
+### 代码
+#### TensorFlow MNIST
+```py
+from tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets(".", one_hot=True, reshape=False)
+```
+你可以使用 TensorFlow 提供的 MNIST 数据集，他把分批和独热码都帮你处理好了。
+
+#### 学习参数 Learning Parameters
+```py
+import tensorflow as tf
+
+# 参数 Parameters
+learning_rate = 0.001
+training_epochs = 20
+batch_size = 128  # 如果没有足够内存，可以降低 batch size
+display_step = 1
+
+n_input = 784  # MNIST data input (img shape: 28*28)
+n_classes = 10  # MNIST total classes (0-9 digits)
+```
+这里的关注点是多层神经网络的架构，不是调参，所以这里直接给你了学习的参数。
+
+#### 隐藏层参数 Hidden Layer Parameters
+
+```py
+n_hidden_layer = 256 # layer number of features 特征的层数
+```
+n_hidden_layer 决定了神经网络隐藏层的大小。也被称作层的宽度。
+
+#### 权重和偏置项 Weights and Biases
+```py
+# Store layers weight & bias
+# 层权重和偏置项的储存
+weights = {
+    'hidden_layer': tf.Variable(tf.random_normal([n_input, n_hidden_layer])),
+    'out': tf.Variable(tf.random_normal([n_hidden_layer, n_classes]))
+}
+biases = {
+    'hidden_layer': tf.Variable(tf.random_normal([n_hidden_layer])),
+    'out': tf.Variable(tf.random_normal([n_classes]))
+}
+```
+深度神经网络有多个层，每个层有自己的权重和偏置项。'hidden_layer' 的权重和偏置项只属于隐藏层（hidden_layer）， 'out' 的权重和偏置项只属于输出层（output layer）。如果神经网络比这更深，那每一层都有权重和偏置项。
+
+#### 输入 Input
+```py
+# tf Graph input
+x = tf.placeholder("float", [None, 28, 28, 1])
+y = tf.placeholder("float", [None, n_classes])
+
+x_flat = tf.reshape(x, [-1, n_input])
+```
+MNIST 数据集是由 28px * 28px 单通道图片组成。tf.reshape()函数把 28px * 28px 的矩阵转换成了 784px * 1px 的单行向量 x。
+
+#### 多层感知器 Multilayer Perceptron
+![avatar](pig/multi_perce.png)
+```py
+# Hidden layer with RELU activation
+# ReLU作为隐藏层激活函数
+layer_1 = tf.add(tf.matmul(x_flat, weights['hidden_layer']),\
+    biases['hidden_layer'])
+layer_1 = tf.nn.relu(layer_1)
+# Output layer with linear activation
+# 输出层的线性激活函数
+logits = tf.add(tf.matmul(layer_1, weights['out']), biases['out'])
+```
+你之前已经见过 tf.add(tf.matmul(x_flat, weights['hidden_layer']), biases['hidden_layer'])，也就是 xw + b。把线性函数与 ReLU 组合在一起，形成一个2层网络。
+
+#### 优化器 Optimizer
+```py
+# Define loss and optimizer
+# 定义误差值和优化器
+cost = tf.reduce_mean(\
+    tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y))
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)\
+    .minimize(cost)
+```
+这跟 Intro to TensorFlow lab 里用到的优化技术一样。
+
+#### Session
+```py
+# Initializing the variables
+# 初始化变量
+init = tf.global_variables_initializer()
+
+# Launch the graph
+# 启动图
+with tf.Session() as sess:
+    sess.run(init)
+    # Training cycle
+    # 训练循环
+    for epoch in range(training_epochs):
+        total_batch = int(mnist.train.num_examples/batch_size)
+        # Loop over all batches
+        # 遍历所有 batch
+        for i in range(total_batch):
+            batch_x, batch_y = mnist.train.next_batch(batch_size)
+            # Run optimization op (backprop) and cost op (to get loss value)
+            # 运行优化器进行反向传导、计算 cost（获取 loss 值）
+            sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
+```
+TensorFlow 中的 MNIST 库提供了分批接收数据的能力。调用mnist.train.next_batch()函数返回训练数据的一个子集。
+
+### 深度神经网络
+![avatar](pig/deep_learning_network.png)
+就是这样！从一层到两层很简单。向网络中添加更多层，可以让你解决更复杂的问题。
