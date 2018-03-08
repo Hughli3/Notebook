@@ -895,6 +895,7 @@ cost = tf.reduce_mean(\
     tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y))
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)\
     .minimize(cost)
+# \ 是换行
 ```
 这跟 Intro to TensorFlow lab 里用到的优化技术一样。
 
@@ -925,3 +926,417 @@ TensorFlow 中的 MNIST 库提供了分批接收数据的能力。调用mnist.tr
 ### 深度神经网络
 ![avatar](pig/deep_learning_network.png)
 就是这样！从一层到两层很简单。向网络中添加更多层，可以让你解决更复杂的问题。
+
+## 保存和读取 TensorFlow 模型
+训练一个模型的时间很长。但是你一旦关闭了 TensorFlow session，你所有训练的权重和偏置项都丢失了。如果你计划在之后重新使用这个模型，你需要重新训练！
+
+幸运的是，TensorFlow 可以让你通过一个叫 tf.train.Saver 的类把你的进程保存下来。这个类可以把任何 tf.Variable 存到你的文件系统。
+
+### 保存变量
+让我们通过一个简单地例子来保存 weights 和 bias Tensors。第一个例子你只是存两个变量，后面会教你如何把一个实际模型的所有权重保存下来。
+```py
+import tensorflow as tf
+
+# The file path to save the data
+# 文件保存路径
+save_file = './model.ckpt'
+
+# Two Tensor Variables: weights and bias
+# 两个 Tensor 变量：权重和偏置项
+weights = tf.Variable(tf.truncated_normal([2, 3]))
+bias = tf.Variable(tf.truncated_normal([3]))
+
+# Class used to save and/or restore Tensor Variables
+# 用来存取 Tensor 变量的类
+saver = tf.train.Saver()
+
+with tf.Session() as sess:
+    # Initialize all the Variables
+    # 初始化所有变量
+    sess.run(tf.global_variables_initializer())
+
+    # Show the values of weights and bias
+   # 显示变量和权重
+    print('Weights:')
+    print(sess.run(weights))
+    print('Bias:')
+    print(sess.run(bias))
+
+    # Save the model
+    # 保存模型
+    saver.save(sess, save_file)
+```
+>Weights:
+>
+>[[-0.97990924 1.03016174 0.74119264]
+>
+>[-0.82581609 -0.07361362 -0.86653847]]
+>
+>Bias:
+>
+>[ 1.62978125 -0.37812829 0.64723819]
+
+weights 和 bias Tensors 用 tf.truncated_normal() 函数设定了随机值。用 tf.train.Saver.save() 函数把这些值被保存在save_file 位置，命名为 "model.ckpt"，（".ckpt" 扩展名表示"checkpoint"）。
+
+如果你使用 TensorFlow 0.11.0RC1 或者更新的版本，还会生成一个包含了 TensorFlow graph 的文件 "model.ckpt.meta"。
+
+### 加载变量
+现在这些变量已经存好了，让我们把它们加载到新模型里。
+```py
+# Remove the previous weights and bias
+# 移除之前的权重和偏置项
+tf.reset_default_graph()
+
+# Two Variables: weights and bias
+# 两个变量：权重和偏置项
+weights = tf.Variable(tf.truncated_normal([2, 3]))
+bias = tf.Variable(tf.truncated_normal([3]))
+
+# Class used to save and/or restore Tensor Variables
+# 用来存取 Tensor 变量的类
+saver = tf.train.Saver()
+
+with tf.Session() as sess:
+    # Load the weights and bias
+    # 加载权重和偏置项
+    saver.restore(sess, save_file)
+
+    # Show the values of weights and bias
+    # 显示权重和偏置项
+    print('Weight:')
+    print(sess.run(weights))
+    print('Bias:')
+    print(sess.run(bias))
+```
+>Weights:
+>
+>[[-0.97990924 1.03016174 0.74119264]
+>
+>[-0.82581609 -0.07361362 -0.86653847]]
+>
+>Bias:
+>
+>[ 1.62978125 -0.37812829 0.64723819]
+
+注意，你依然需要在 Python 中创建 weights 和 bias Tensors。tf.train.Saver.restore() 函数把之前保存的数据加载到 weights 和 bias 当中。
+
+因为 tf.train.Saver.restore() 设定了 TensorFlow 变量，这里你不需要调用 tf.global_variables_initializer()了。
+
+### 保存一个训练好的模型
+让我们看看如何训练一个模型并保存它的权重。
+
+从一个模型开始：
+```py
+# Remove previous Tensors and Operations
+# 移除之前的  Tensors 和运算
+tf.reset_default_graph()
+
+from tensorflow.examples.tutorials.mnist import input_data
+import numpy as np
+
+learning_rate = 0.001
+n_input = 784  # MNIST 数据输入 (图片尺寸: 28*28)
+n_classes = 10  # MNIST 总计类别 (数字 0-9)
+
+# Import MNIST data
+# 加载 MNIST 数据
+mnist = input_data.read_data_sets('.', one_hot=True)
+
+# Features and Labels
+# 特征和标签
+features = tf.placeholder(tf.float32, [None, n_input])
+labels = tf.placeholder(tf.float32, [None, n_classes])
+
+# Weights & bias
+# 权重和偏置项
+weights = tf.Variable(tf.random_normal([n_input, n_classes]))
+bias = tf.Variable(tf.random_normal([n_classes]))
+
+# Logits - xW + b
+logits = tf.add(tf.matmul(features, weights), bias)
+
+# Define loss and optimizer
+# 定义损失函数和优化器
+cost = tf.reduce_mean(\
+    tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)\
+    .minimize(cost)
+
+# Calculate accuracy
+# 计算准确率
+correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+让我们训练模型并保存权重：
+import math
+
+save_file = './train_model.ckpt'
+batch_size = 128
+n_epochs = 100
+
+saver = tf.train.Saver()
+
+# Launch the graph
+# 启动图
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+
+    # Training cycle
+    # 训练循环
+    for epoch in range(n_epochs):
+        total_batch = math.ceil(mnist.train.num_examples / batch_size)
+
+        # Loop over all batches
+        # 遍历所有 batch
+        for i in range(total_batch):
+            batch_features, batch_labels = mnist.train.next_batch(batch_size)
+            sess.run(
+                optimizer,
+                feed_dict={features: batch_features, labels: batch_labels})
+
+        # Print status for every 10 epochs
+        # 每运行10个 epoch 打印一次状态
+        if epoch % 10 == 0:
+            valid_accuracy = sess.run(
+                accuracy,
+                feed_dict={
+                    features: mnist.validation.images,
+                    labels: mnist.validation.labels})
+            print('Epoch {:<3} - Validation Accuracy: {}'.format(
+                epoch,
+                valid_accuracy))
+
+    # Save the model
+    # 保存模型
+    saver.save(sess, save_file)
+    print('Trained Model Saved.')
+```
+>Epoch 0 - Validation Accuracy: 0.06859999895095825
+>
+>Epoch 10 - Validation Accuracy: 0.20239999890327454
+>
+>Epoch 20 - Validation Accuracy: 0.36980000138282776
+>
+>Epoch 30 - Validation Accuracy: 0.48820000886917114
+>
+>Epoch 40 - Validation Accuracy: 0.5601999759674072
+>
+>Epoch 50 - Validation Accuracy: 0.6097999811172485
+>
+>Epoch 60 - Validation Accuracy: 0.6425999999046326
+>
+>Epoch 70 - Validation Accuracy: 0.6733999848365784
+>
+>Epoch 80 - Validation Accuracy: 0.6916000247001648
+>
+>Epoch 90 - Validation Accuracy: 0.7113999724388123
+>
+>Trained Model Saved.
+
+### 加载训练好的模型
+让我们从磁盘中加载权重和偏置项，验证测试集准确率。
+```py
+saver = tf.train.Saver()
+
+# Launch the graph
+# 加载图
+with tf.Session() as sess:
+    saver.restore(sess, save_file)
+
+    test_accuracy = sess.run(
+        accuracy,
+        feed_dict={features: mnist.test.images, labels: mnist.test.labels})
+
+print('Test Accuracy: {}'.format(test_accuracy))
+Test Accuracy: 0.7229999899864197
+```
+就是这样！你现在知道如何保存再加载一个 TensorFlow 的训练模型了。下一章节让我们看看如何把权重和偏置项加载到修改过的模型中。
+
+## 把权重和偏置项加载到新模型中
+很多时候你想调整，或者说“微调”一个你已经训练并保存了的模型。但是，把保存的变量直接加载到已经修改过的模型会产生错误。让我们看看如何解决这个问题。
+
+### 命名报错
+TensorFlow 对 Tensor 和计算使用一个叫 name 的字符串辨识器，如果没有定义 name，TensorFlow 会自动创建一个。TensorFlow 会把第一个节点命名为 <code>\<Type></code>，把后续的命名为<code>\<Type>_\<number></code>。让我们看看这对加载一个有不同顺序权重和偏置项的模型有哪些影响：
+```py
+import tensorflow as tf
+
+# Remove the previous weights and bias
+# 移除先前的权重和偏置项
+tf.reset_default_graph()
+
+save_file = 'model.ckpt'
+
+# Two Tensor Variables: weights and bias
+# 两个 Tensor 变量：权重和偏置项
+weights = tf.Variable(tf.truncated_normal([2, 3]))
+bias = tf.Variable(tf.truncated_normal([3]))
+
+saver = tf.train.Saver()
+
+# Print the name of Weights and Bias
+# 打印权重和偏置项的名字
+print('Save Weights: {}'.format(weights.name))
+print('Save Bias: {}'.format(bias.name))
+
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    saver.save(sess, save_file)
+
+# Remove the previous weights and bias
+# 移除之前的权重和偏置项
+tf.reset_default_graph()
+
+# Two Variables: weights and bias
+# 两个变量：权重和偏置项
+bias = tf.Variable(tf.truncated_normal([3]))
+weights = tf.Variable(tf.truncated_normal([2, 3]))
+
+saver = tf.train.Saver()
+
+# Print the name of Weights and Bias
+# 打印权重和偏置项的名字
+print('Load Weights: {}'.format(weights.name))
+print('Load Bias: {}'.format(bias.name))
+
+with tf.Session() as sess:
+    # Load the weights and bias - ERROR
+    # 加载权重和偏置项 - 报错
+    saver.restore(sess, save_file)
+```
+上述代码会有下列输出：
+
+>Save Weights: Variable:0
+>
+>Save Bias: Variable_1:0
+>
+>Load Weights: Variable_1:0
+>
+>Load Bias: Variable:0
+
+...
+
+InvalidArgumentError (see above for traceback): Assign requires shapes of both tensors to match.
+
+...
+你注意到，weights 和 bias 的 name 属性与你保存的模型不同。这是为什么代码报“Assign requires shapes of both tensors to match”这个错误。saver.restore(sess, save_file) 代码试图把权重数据加载到bias里，把偏置项数据加载到 weights里。
+
+与其让 TensorFlow 来设定 name 属性，不如让我们来手动设定：
+```py
+import tensorflow as tf
+
+tf.reset_default_graph()
+
+save_file = 'model.ckpt'
+
+# Two Tensor Variables: weights and bias
+# 两个 Tensor 变量：权重和偏置项
+weights = tf.Variable(tf.truncated_normal([2, 3]), name='weights_0')
+bias = tf.Variable(tf.truncated_normal([3]), name='bias_0')
+
+saver = tf.train.Saver()
+
+# Print the name of Weights and Bias
+# 打印权重和偏置项的名称
+print('Save Weights: {}'.format(weights.name))
+print('Save Bias: {}'.format(bias.name))
+
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    saver.save(sess, save_file)
+
+# Remove the previous weights and bias
+# 移除之前的权重和偏置项
+tf.reset_default_graph()
+
+# Two Variables: weights and bias
+# 两个变量：权重和偏置项
+bias = tf.Variable(tf.truncated_normal([3]), name='bias_0')
+weights = tf.Variable(tf.truncated_normal([2, 3]) ,name='weights_0')
+
+saver = tf.train.Saver()
+
+# Print the name of Weights and Bias
+# 打印权重和偏置项的名称
+print('Load Weights: {}'.format(weights.name))
+print('Load Bias: {}'.format(bias.name))
+
+with tf.Session() as sess:
+    # Load the weights and bias - No Error
+    # 加载权重和偏置项 - 没有报错
+    saver.restore(sess, save_file)
+
+print('Loaded Weights and Bias successfully.')
+```
+>Save Weights: weights_0:0
+>
+>Save Bias: bias_0:0
+>
+>Load Weights: weights_0:0
+>
+>Load Bias: bias_0:0
+
+Loaded Weights and Bias successfully.
+这次没问题！Tensor 名称匹配正确，数据被正确加载。
+
+
+## TensorFlow Dropout
+![avatar](pig/dropout.png)
+图 1：来自论文 "Dropout: A Simple Way to Prevent Neural Networks from Overfitting" (https://www.cs.toronto.edu/~hinton/absps/JMLRdropout.pdf)
+Dropout 是一个降低过拟合的正则化技术。它在网络中暂时的丢弃一些单元（神经元），以及与它们的前后相连的所有节点。图 1 是 dropout 的工作示意图。
+
+TensorFlow 提供了一个 <code>tf.nn.dropout()</code> 函数，你可以用来实现 dropout。
+
+让我们来看一个 <code>tf.nn.dropout()</code>的使用例子。
+```py
+keep_prob = tf.placeholder(tf.float32) # probability to keep units
+
+hidden_layer = tf.add(tf.matmul(features, weights[0]), biases[0])
+hidden_layer = tf.nn.relu(hidden_layer)
+hidden_layer = tf.nn.dropout(hidden_layer, keep_prob)
+
+logits = tf.add(tf.matmul(hidden_layer, weights[1]), biases[1])
+```
+上面的代码展示了如何在神经网络中应用 dropout。
+
+<code>tf.nn.dropout()</code>函数有两个参数：
+
+1. <code>hidden_layer</code>：你要应用 dropout 的 tensor
+2. <code>keep_prob</code>：任何一个给定单元的留存率（没有被丢弃的单元）
+<code>keep_prob</code> 可以让你调整丢弃单元的数量。为了补偿被丢弃的单元，<code>tf.nn.dropout()</code> 把所有保留下来的单元（没有被丢弃的单元）* 1/keep_prob
+
+在训练时，一个好的<code>keep_prob</code>初始值是0.5。
+
+在测试时，把 <code>keep_prob</code> 值设为1.0 ，这样保留所有的单元，最大化模型的能力。
+
+### 练习1
+下面的代码，哪里出问题了？
+
+语法没问题，但是测试准确率很低。
+
+...
+
+keep_prob = tf.placeholder(tf.float32) # probability to keep units
+
+hidden_layer = tf.add(tf.matmul(features, weights[0]), biases[0])
+hidden_layer = tf.nn.relu(hidden_layer)
+hidden_layer = tf.nn.dropout(hidden_layer, keep_prob)
+
+logits = tf.add(tf.matmul(hidden_layer, weights[1]), biases[1])
+
+...
+
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+
+    for epoch_i in range(epochs):
+        for batch_i in range(batches):
+            ....
+
+            sess.run(optimizer, feed_dict={
+                features: batch_features,
+                labels: batch_labels,
+                keep_prob: 0.5})
+
+    validation_accuracy = sess.run(accuracy, feed_dict={
+        features: test_features,
+        labels: test_labels,
+        keep_prob: 0.5})
