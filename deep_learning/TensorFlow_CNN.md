@@ -1,7 +1,7 @@
 # TensorFlow 卷积层
 让我们看下如何在 TensorFlow 里面实现 CNN。
 
-TensorFlow 提供了 tf.nn.conv2d() 和 tf.nn.bias_add() 函数来创建你自己的卷积层。
+TensorFlow 提供了 <code>tf.nn.conv2d()</code> 和 tf.nn.bias_add() 函数来创建你自己的卷积层。
 ```py
 # Output depth
 k_output = 64
@@ -36,9 +36,10 @@ conv_layer = tf.nn.relu(conv_layer)
 
 你可以专注于修改 input_height 和 input_width， batch 和 input_channels 都设置成 1。input_height 和 input_width strides 表示滤波器在input 上移动的步长。上述例子中，在 input 之后，设置了一个 5x5 ，stride 为 2 的滤波器。
 
-tf.nn.bias_add() 函数对矩阵的最后一维加了偏置项。
+<code>tf.nn.bias_add()</code> 函数对矩阵的最后一维加了偏置项。
 
-- 注意 padding 的取值可以有"SAME"和"VALID",两者的区别在于如果输入为2行3列且stride=2时，VALID只会关注前两行两列，而SAME模式会自动在最后补上一列0.
+- **注意 padding 的取值可以有"SAME"和"VALID",两者的区别在于如果输入为2行3列且stride=2时，VALID只会关注前两行两列，而SAME模式会自动在最后补上一列0.**
+
 ## TensorFlow 最大池化
 
 由 Aphex34 (自己的作品) CC BY-SA 4.0， 通过 Wikimedia Commons 共享
@@ -47,7 +48,7 @@ tf.nn.bias_add() 函数对矩阵的最后一维加了偏置项。
 
 例如 [[1, 0], [4, 6]] 生成 6，因为 6 是这4个数字中最大的。同理 [[2, 3], [6, 8]] 生成 8。 理论上，最大池化操作的好处是减小输入大小，使得神经网络能够专注于最重要的元素。最大池化只取覆盖区域中的最大值，其它的值都丢弃。
 
-TensorFlow 提供了 tf.nn.max_pool() 函数，用于对卷积层实现 最大池化 。
+TensorFlow 提供了 <code>tf.nn.max_pool()</code>  函数，用于对卷积层实现 最大池化 。
 ```py
 ...
 conv_layer = tf.nn.conv2d(input, weight, strides=[1, 2, 2, 1], padding='SAME')
@@ -243,7 +244,7 @@ biases = {
 ### 卷积
 
 3×3 卷积滤波器。来源：http://deeplearning.stanford.edu/wiki/index.php/Feature_extraction_using_convolution
-这是一个 3x3 的卷积滤波器的示例。以 stride 为 1 应用到一个范围在 0 到 1 之间的数据上。每一个 3x3 的部分与权值 [[1, 0, 1], [0, 1, 0], [1, 0, 1]] 做卷积，把偏置加上后得到右边的卷积特征。这里偏置是 0 。TensorFlow 中这是通过 tf.nn.conv2d() 和 tf.nn.bias_add() 来完成的。
+**这是一个 3x3 的卷积滤波器的示例。以 stride 为 1 应用到一个范围在 0 到 1 之间的数据上。每一个 3x3 的部分与权值 [[1, 0, 1], [0, 1, 0], [1, 0, 1]] 做卷积，把偏置加上后得到右边的卷积特征。**这里偏置是 0 。TensorFlow 中这是通过 <code>tf.nn.conv2d()</code>  和 <code> tf.nn.bias_add()</code>  来完成的。
 ```py
 def conv2d(x, W, b, strides=1):
     x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
